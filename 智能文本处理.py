@@ -3,8 +3,36 @@ import jieba
 import string
 from zhon.hanzi import punctuation
 import re
-#input()
-text = input("请输入你想要统计的文本：").strip()
+import json
+
+#自动保存
+def load_data():
+    try:
+        with open("history.json","r",encording="utf-8") as f:
+            return json.load(f)
+    except:
+        return {"unique_words":[],"word_counts":[]}
+
+def save_data(uw,wc):
+    with open("history.json","w",encording="utf-8") as f:
+        json.dump({"unique_words":uw,"word_counts":wc},f,ensure_ascii=False)
+
+#加载之前的词频
+history = load_data()
+unique_words = history["unique_words"]
+word_counts = history["word_counts"]
+
+print("\n提示：支持多行输入，输入完成后输入‘ok’并回车结束")
+print("请输入你想要统计的文本：")
+
+#支持多行输入，不会一换行就提交
+lines = []
+while True:
+    line = input()
+    if line.strip().lower() =="ok":
+        break
+    lines.append(line)
+text = "\n".join(lines).strip()    
 
 if not text:
     print("错误：你还没输入任何文本！")
@@ -24,18 +52,19 @@ else:
     print(word_list)
     print("-" * 50)
 
-unique_words = []
-word_counts = []
-for word in word_list:
-    if word not in unique_words:
-        unique_words.append(word)
-        word_counts.append(1)
+    #累计词频
+    for word in word_list:
+        if word not in unique_words:
+            unique_words.append(word)
+            word_counts.append(1)
+        else:
+            index = unique_words.index(word)
+            word_counts[index] += 1
 
-    else:
-        index = unique_words.index(word) 
-        word_counts[index] += 1
+    #自动保存
+    save_data(unique_words,word_counts)
 
-print("\n词频统计结果：")
+print("\n【累计】词频统计结果：")
 print("单词\t\t频次")
 print("-" * 20)
 #遍历两个列表，打印每个单词和对应频次
@@ -47,3 +76,4 @@ total_words = sum(word_counts)
 different_words = len(unique_words) 
 print(f"总单词数量：{total_words}")
 print(f"不同单词数量：{different_words}")
+print("\n数据已经自动保存，下次打开会继续累计")
