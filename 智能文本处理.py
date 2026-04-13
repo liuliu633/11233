@@ -6,33 +6,16 @@ import re
 import json
 
 #自动保存
-def load_data():
+def load_counts():
     try:
-        with open("history.json","r",encording="utf-8") as f:
-            return json.load(f)
-    except:
-        return {"unique_words":[],"word_counts":[]}
+        with open("word_data.json","r",encoding="utf-8") as f:
+            data = json.load(f)
+            return data.get("unique_words",[]),data.get("word_counts",[])
+    except(FileNotFoundError,json.JSONDecodeError):
+        return [],[]
 
-def save_data(uw,wc):
-    with open("history.json","w",encording="utf-8") as f:
-        json.dump({"unique_words":uw,"word_counts":wc},f,ensure_ascii=False)
-
-#加载之前的词频
-history = load_data()
-unique_words = history["unique_words"]
-word_counts = history["word_counts"]
-
-print("\n提示：支持多行输入，输入完成后输入‘ok’并回车结束")
-print("请输入你想要统计的文本：")
-
-#支持多行输入，不会一换行就提交
-lines = []
-while True:
-    line = input()
-    if line.strip().lower() =="ok":
-        break
-    lines.append(line)
-text = "\n".join(lines).strip()    
+#加载历史记录
+unique_words,word_counts = load_counts()
 
 if not text:
     print("错误：你还没输入任何文本！")
@@ -62,10 +45,13 @@ else:
             word_counts[index] += 1
 
     #自动保存
-    save_data(unique_words,word_counts)
+    def save_counts(uw,wc):
+        with open("word_data.json","w",encoding="utf-8") as f:
+            json.dump({"unique_words":uw,"word_counts":wc},f,ensure_ascii=False)
+    save_counts(unique_words,word_counts)
 
 print("\n【累计】词频统计结果：")
-print("单词\t\t频次")
+print("单词\t\t频次)
 print("-" * 20)
 #遍历两个列表，打印每个单词和对应频次
 for i in range(len(unique_words)):
