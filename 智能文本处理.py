@@ -115,3 +115,101 @@ different_words = len(unique_words)
 print(f"总单词数量：{total_words}")
 print(f"不同单词数量：{different_words}")
 print("\n数据已经自动保存，下次打开会继续累计")
+# ---------- 1. HTML/XML 标签校验（栈）----------
+ def validate_tags(self, text):
+        """使用栈校验 HTML/XML 标签是否闭合正确"""
+        # 匹配标签：<...> 或 </...>，并捕获标签名
+        tag_pattern = re.compile(r'</?([a-zA-Z0-9]+)[^>]*>')
+        stack = []
+        for match in tag_pattern.finditer(text):
+            full_tag = match.group(0)
+            tag_name = match.group(1)
+            # 判断是否为闭合标签
+            is_closing = full_tag.startswith('</')
+            if not is_closing:
+                # 开标签入栈
+                stack.append(tag_name)
+            else:
+                # 闭合标签：检查栈顶是否匹配
+                if not stack:
+                    return False, f"错误：多余的闭合标签 </{tag_name}>"
+                if stack[-1] != tag_name:
+                    return False, f"错误：期望闭合 </{stack[-1]}>，但遇到了 </{tag_name}>"
+                stack.pop()
+        if stack:
+            return False, f"错误：未闭合的标签 {stack}"
+        return True, "标签校验通过，所有标签正确闭合。"
+
+    # ---------- 2. 文本撤销/重做（栈）----------
+    def update_text(self, new_text):
+        """更新文本并保存历史（用于撤销/重做）"""
+        if self.text != new_text:
+            self.history.append(self.text)
+            self.text = new_text
+            self.redo_stack.clear()  # 新操作后清空重做栈
+
+    def undo(self):
+        """撤销操作"""
+        if not self.history:
+            return False, "没有可撤销的操作。"
+        self.redo_stack.append(self.text)
+        self.text = self.history.pop()
+        return True, f"撤销成功，当前文本：\n{self.text[:200]}..."
+
+    def redo(self):
+        """重做操作"""
+        if not self.redo_stack:
+            return False, "没有可重做的操作。"
+        self.history.append(self.text)
+        self.text = self.redo_stack.pop()
+        return True, f"重做成功，当前文本：\n{self.text[:200]}..."
+
+    # ---------- 3. 文本逐行/逐句处理（队列）----------
+    def process_line_by_line(self, text):
+        """逐行处理：将每行放入队列，依次进行词频统计"""
+        lines = text.splitlines()
+        if not lines:
+            return "没有可处理的行。"
+
+        queue = deque(lines)
+        results = []
+        line_num = 1
+        while queue:
+            line = queue.popleft()
+            if not line.strip():
+                results.append(f"第{line_num}行（空行）")
+                line_num += 1
+                continue
+            result_str, _ = self.basic_word_freq(line)
+            # 只提取简要统计信息
+            lines_in_result = result_str.splitlines()
+            # 取总单词数和不同单词数
+            total = next((l for l in lines_in_result if "总单词数量" in l), "")
+            diff = next((l for l in lines_in_result if "不同单词数量" in l), "")
+            results.append(f"第{line_num}行处理完成：{total}, {diff}")
+            line_num += 1
+
+        return "\n".join(results)
+
+    def process_sentence_by_sentence(self, text):
+        """逐句处理：按中英文标点分句，放入队列依次处理"""
+        # 简单分句：以。！？.!? 分割
+        sentences = re.split(r'[。！？.!?]', text)
+        sentences = [s.strip() for s in sentences if s.strip()]
+        if not sentences:
+            return "没有可处理的句子。"
+
+        queue = deque(sentences)
+        results = []
+        sent_num = 1
+        while queue:
+            sent = queue.popleft()
+            result_str, _ = self.basic_word_freq(sent)
+            lines_in_result = result_str.splitlines()
+            total = next((l for l in lines_in_result if "总单词数量" in l), "")
+            diff = next((l for l in lines_in_result if "不同单词数量" in l), "")
+            results.append(f"第{sent_num}句处理完成：{total}, {diff}")
+            sent_num += 1
+
+        return "\n".join(results)
+
