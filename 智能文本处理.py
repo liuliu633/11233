@@ -212,4 +212,175 @@ print("\n数据已经自动保存，下次打开会继续累计")
             sent_num += 1
 
         return "\n".join(results)
+kkk: 04-28 10:23:24
+# ---------- 4. 流水线处理（队列）----------
+    def pipeline_process(self, text):
+        """
+        流水线：清洗 -> 分词 -> 统计 -> 格式化
+        每步的输出作为下一步的输入，使用队列传递。
+        """
+        steps = deque([
+            ("清洗标点", self._step_clean),
+            ("分词", self._step_tokenize),
+            ("统计词频", self._step_count),
+            ("格式化结果", self._step_format)
+        ])
+        
+        data = text
+        while steps:
+            step_name, step_func = steps.popleft()
+            print(f"[流水线] 正在执行: {step_name}")
+            data = step_func(data)
+        return data
 
+    def _step_clean(self, text):
+        all_punctuations = string.punctuation + punctuation
+        cleaned = text
+        for p in all_punctuations:
+            cleaned = cleaned.replace(p, ' ')
+        return ' '.join(cleaned.split())
+
+    def _step_tokenize(self, text):
+        has_chinese = any('\u4e00' <= c <= '\u9fff' for c in text)
+        if has_chinese:
+            words = jieba.lcut(text)
+        else:
+            words = text.lower().split()
+        return [w for w in words if w.strip()]
+
+    def _step_count(self, word_list):
+        freq = {}
+        for w in word_list:
+            freq[w] = freq.get(w, 0) + 1
+        return freq
+
+    def _step_format(self, freq_dict):
+        lines = ["流水线处理结果："]
+        lines.append("单词\t\t频次")
+        lines.append("-" * 20)
+        for word, count in freq_dict.items():
+            lines.append(f"{word}\t\t{count}")
+        lines.append("-" * 20)
+        lines.append(f"总单词数：{sum(freq_dict.values())}")
+        lines.append(f"不同单词数：{len(freq_dict)}")
+        return "\n".join(lines)
+
+
+
+kkk: 04-28 10:27:17
+# ---------- 5. 异步保存结果（线程）----------
+    def save_async(self, content, filename="result.txt"):
+        """启动后台线程保存结果到文件"""
+        def _save():
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                print(f"[异步保存] 结果已保存至 {filename}")
+            except Exception as e:
+                print(f"[异步保存] 保存失败：{e}")
+        
+        thread = threading.Thread(target=_save, daemon=True)
+        thread.start()
+        return f"异步保存任务已启动，文件将保存为 {filename}"
+
+# ---------- 交互菜单 ----------
+def main():
+    system = TextProcessingSystem()
+    
+    while True:
+        print("\n" + "="*50)
+        print("智能文本处理系统（增强版）")
+        print("="*50)
+        print("当前文本长度:", len(system.text), "字符")
+        print("1. 输入/修改文本")
+        print("2. 基础词频统计")
+        print("3. HTML/XML 标签校验")
+        print("4. 撤销 (Undo)")
+        print("5. 重做 (Redo)")
+        print("6. 逐行处理")
+        print("7. 逐句处理")
+        print("8. 流水线处理")
+        print("9. 异步保存上次处理结果")
+        print("0. 退出")
+        print("-"*50)
+        
+        choice = input("请选择操作：").strip()
+        
+        if choice == "1":
+            print("请输入新文本（支持多行，输入单独一行 'END' 结束）：")
+            lines = []
+            while True:
+                line = input()
+                if line == "END":
+                    break
+                lines.append(line)
+            new_text = "\n".join(lines)
+            system.update_text(new_text)
+            print("文本已更新。")
+        
+        elif choice == "2":
+            if not system.text:
+                print("请先输入文本！")
+            else:
+                result, freq = system.basic_word_freq(system.text)
+                system.processed_result = result
+                print(result)
+        
+        elif choice == "3":
+            if not system.text:
+                print("请先输入文本！")
+            else:
+                valid, msg = system.validate_tags(system.text)
+                print("校验结果:", msg)
+        
+        elif choice == "4":
+            success, msg = system.undo()
+            print(msg)
+        
+        elif choice == "5":
+            success, msg = system.redo()
+            print(msg)
+        
+        elif choice == "6":
+            if not system.text:
+                print("请先输入文本！")
+            else:
+                result = system.process_line_by_line(system.text)
+                system.processed_result = result
+                print(result)
+        
+        elif choice == "7":
+            if not system.text:
+                print("请先输入文本！")
+            else:
+                result = system.process_sentence_by_sentence(system.text)
+                system.processed_result = result
+                print(result)
+        
+        elif choice == "8":
+            if not system.text:
+                print("请先输入文本！")
+            else:
+                result = system.pipeline_process(system.text)
+                system.processed_result = result
+                print(result)
+        
+        elif choice == "9":
+            if system.processed_result is None:
+                print("没有可保存的处理结果，请先执行一项处理。")
+            else:
+                filename = input("请输入保存文件名（默认 result.txt）：").strip()
+                if not filename:
+                    filename = "result.txt"
+                msg = system.save_async(system.processed_result, filename)
+                print(msg)
+        
+        elif choice == "0":
+            print("感谢使用，再见！")
+            break
+        
+        else:
+            print("无效选择，请重新输入。")
+
+if __name__ == "__main__":
+    main()
