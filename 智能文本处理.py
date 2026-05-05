@@ -118,172 +118,246 @@ while True:
     print(f"不同单词数量：{different_words}")
     print("\n数据已经自动保存，下次打开会继续累计")
 # ---------- 1. HTML/XML 标签校验（栈）----------
- def validate_tags(self, text):
-        """使用栈校验 HTML/XML 标签是否闭合正确"""
-        # 匹配标签：<...> 或 </...>，并捕获标签名
-        tag_pattern = re.compile(r'</?([a-zA-Z0-9]+)[^>]*>')
-        stack = []
-        for match in tag_pattern.finditer(text):
-            full_tag = match.group(0)
-            tag_name = match.group(1)
-            # 判断是否为闭合标签
-            is_closing = full_tag.startswith('</')
-            if not is_closing:
-                # 开标签入栈
-                stack.append(tag_name)
+def validate_tags(text):
+     #存放开标签的栈
+     stack = []   
+        #遍历文本里的字符，找标签
+        i = 0
+        while i < len(text):
+            if text[i] == '<':
+                j = i
+                while j < len(text) and text[j] == '>':
+                    j += 1
+                #把<>中间的内容拿出来
+                tag = text[i:j+1]
+                i = j + 1
+                
+                #判断是不是闭合标签（以 </ 开头）
+                if tag.startswith('</'):
+                    # 拿到标签名字，比如 </div> → div
+                    tag_name = tag[2:-1]
+
+                    # 如果栈是空的，说明多了一个闭合标签
+                     if len(stack) == 0:
+                         return False, "错误：多出来的闭合标签"
+
+                     # 拿出栈最上面的标签
+                     last_tag = stack.pop()
+
+                      # 如果名字对不上，说明嵌套错了
+                      if last_tag != tag_name:
+                          return False, "错误：标签嵌套顺序错了" 
+
+                 # 否则是开标签，直接放进栈里
+                 else:
+                     tag_name = tag[1:-1]
+                     stack.append(tag_name)
             else:
-                # 闭合标签：检查栈顶是否匹配
-                if not stack:
-                    return False, f"错误：多余的闭合标签 </{tag_name}>"
-                if stack[-1] != tag_name:
-                    return False, f"错误：期望闭合 </{stack[-1]}>，但遇到了 </{tag_name}>"
-                stack.pop()
-        if stack:
-            return False, f"错误：未闭合的标签 {stack}"
-        return True, "标签校验通过，所有标签正确闭合。"
+                 i += 1
 
-    # ---------- 2. 文本撤销/重做（栈）----------
-    def update_text(self, new_text):
-        """更新文本并保存历史（用于撤销/重做）"""
-        if self.text != new_text:
-            self.history.append(self.text)
-            self.text = new_text
-            self.redo_stack.clear()  # 新操作后清空重做栈
+                 # 遍历完后，如果栈里还有东西，说明没闭合
+            if len(stack) > 0:
+                return False, "错误：有标签没有关闭"         
+            return True, "正确：所有标签都配对了"
+            
+ # ---------- 2. 文本撤销/重做（栈）----------
+class TextEditor:
+     def __init__(self):
+         self.text = ""
+         self.history_stack = []
+         self.redo_stack = []
 
-    def undo(self):
-        """撤销操作"""
-        if not self.history:
-            return False, "没有可撤销的操作。"
-        self.redo_stack.append(self.text)
-        self.text = self.history.pop()
-        return True, f"撤销成功，当前文本：\n{self.text[:200]}..."
+     # 更新文本，并保存历史（输入新内容时自动记录）
+     def update_text(self, new_text):
+         # 只有内容真的变了，才记录
+          if self.text != new_text:
+              # 把【当前文本】压入撤销栈（留着以后撤销用）
+              self.history_stack.append(self.text)
+               # 更新成新文本
+              self.text = new_text
+               # 一旦输入新内容，重做栈必须清空
+              self.redo_stack.clear()
 
-    def redo(self):
-        """重做操作"""
-        if not self.redo_stack:
-            return False, "没有可重做的操作。"
-        self.history.append(self.text)
-        self.text = self.redo_stack.pop()
-        return True, f"重做成功，当前文本：\n{self.text[:200]}..."
+     # 撤销：回到上一步
+     def undo(self):
+         # 如果没有历史，不能撤销
+         if len(self.history_stack) == 0:
+             return False, "没有可以重做的操作"
 
+          # 把当前文本压回撤销栈
+         self.history_stack.append(self.text)
+
+           # 恢复重做栈里的内容
+         self.text = self.redo_stack.pop()
+         return True, "重做成功！当前文本：" + self.text
+              
     # ---------- 3. 文本逐行/逐句处理（队列）----------
-    def process_line_by_line(self, text):
-        """逐行处理：将每行放入队列，依次进行词频统计"""
+# 注意：必须导入队列
+from collections import deque
+
+class TextProcessor:
+    def __init__(self):
+        self.text = ""
+
+    def process_line_by_line(self, text): 
+        # 把文本按行切开，变成列表
         lines = text.splitlines()
+        
+        # 如果没有内容
         if not lines:
             return "没有可处理的行。"
 
+        # 创建队列，并把所有行放进去
         queue = deque(lines)
-        results = []
-        line_num = 1
+        result_list = []  # 存放最终结果
+        line_number = 1  # 当前是第几行
+        
+        # 从队列里一行一行取出来处理
         while queue:
-            line = queue.popleft()
-            if not line.strip():
-                results.append(f"第{line_num}行（空行）")
-                line_num += 1
-                continue
-            result_str, _ = self.basic_word_freq(line)
-            # 只提取简要统计信息
-            lines_in_result = result_str.splitlines()
-            # 取总单词数和不同单词数
-            total = next((l for l in lines_in_result if "总单词数量" in l), "")
-            diff = next((l for l in lines_in_result if "不同单词数量" in l), "")
-            results.append(f"第{line_num}行处理完成：{total}, {diff}")
-            line_num += 1
+            current_line = queue.popleft()  # 出队
+            # 如果这一行是空的
+            if current_line.strip() == "":
+                 result_list.append(f"第{line_number}行：空行")
+                 line_number += 1
+                 continue
 
-        return "\n".join(results)
+             # 统计这一行的单词
+            result_str, _ = self.basic_word_freq(current_line)
+            
+             # 从结果里提取关键信息：总单词数、不同单词数
+            result_lines = result_str.splitlines()
+            total_words = ""
+            different_words = ""
+
+            for line in result_lines:
+                if "总单词数量" in line:
+                    total_words = line
+                if "不同单词数量" in line:
+                    different_words = line
+
+             # 把这一行的结果存起来
+            result_list.append(f"第{line_number}行：{total_words}，{different_words}")
+            line_number += 1
+
+        # 把所有行结果拼成字符串返回
+        return "\n".join(result_list)
 
     def process_sentence_by_sentence(self, text):
-        """逐句处理：按中英文标点分句，放入队列依次处理"""
-        # 简单分句：以。！？.!? 分割
-        sentences = re.split(r'[。！？.!?]', text)
-        sentences = [s.strip() for s in sentences if s.strip()]
-        if not sentences:
+        # 如果文本为空
+        if not text.strip():
             return "没有可处理的句子。"
 
+        # 按中英文句号、问号、感叹号分句
+        sentences = []
+        temp = ""
+        for char in text:
+            temp += char
+            if char in ".?!。？！":
+                sentences.append(temp.strip())
+                temp = ""
+        if temp.strip():
+            sentences.append(temp.strip())
+
+        # 创建队列，把所有句子放进去
         queue = deque(sentences)
-        results = []
-        sent_num = 1
+        result_list = []
+        sentence_number = 1
+
+         # 依次从队列取出句子处理
         while queue:
-            sent = queue.popleft()
-            result_str, _ = self.basic_word_freq(sent)
-            lines_in_result = result_str.splitlines()
-            total = next((l for l in lines_in_result if "总单词数量" in l), "")
-            diff = next((l for l in lines_in_result if "不同单词数量" in l), "")
-            results.append(f"第{sent_num}句处理完成：{total}, {diff}")
-            sent_num += 1
+            current_sentence = queue.popleft()
 
-        return "\n".join(results)
-kkk: 04-28 10:23:24
+            if not current_sentence:
+                result_list.append(f"第{sentence_number}句：空句子")
+                sentence_number += 1
+                continue
+
+             # 统计单词 
+            result_str, _ = self.basic_word_freq(current_sentence)
+            result_lines = result_str.splitlines()
+            total_words = ""
+            different_words = ""
+
+            for line in result_lines:
+                if "总单词数量" in line:
+                    total_words = line
+                if "不同单词数量" in line:
+                    different_words = line
+
+            result_list.append(f"第{sentence_number}句：{total_words}，{different_words}") 
+            sentence_number += 1
+
+       return "\n".join(result_list)
+
+   def basic_word_freq(self, text):
+       words = text.split()
+       total = len(words)
+       unique = len(set(words))
+       return f"总单词数量：{total}\n不同单词数量：{unique}", None
+
 # ---------- 4. 流水线处理（队列）----------
-    def pipeline_process(self, text):
-        """
-        流水线：清洗 -> 分词 -> 统计 -> 格式化
-        每步的输出作为下一步的输入，使用队列传递。
-        """
-        steps = deque([
-            ("清洗标点", self._step_clean),
-            ("分词", self._step_tokenize),
-            ("统计词频", self._step_count),
-            ("格式化结果", self._step_format)
-        ])
-        
-        data = text
-        while steps:
-            step_name, step_func = steps.popleft()
-            print(f"[流水线] 正在执行: {step_name}")
-            data = step_func(data)
-        return data
+def pipeline_process(self, text):
+    steps = deque([
+        ("清洗标点", self._step_clean),
+        ("分词", self._step_tokenize),
+        ("统计词频", self._step_count),
+        ("格式化结果", self._step_format)
+    ])
 
-    def _step_clean(self, text):
-        all_punctuations = string.punctuation + punctuation
-        cleaned = text
-        for p in all_punctuations:
-            cleaned = cleaned.replace(p, ' ')
-        return ' '.join(cleaned.split())
+    data = text
+    while steps:
+        name, func = steps.popleft()    
+        print(f"[流水线] {name}")
+        data = func(data)
+    return data
 
-    def _step_tokenize(self, text):
-        has_chinese = any('\u4e00' <= c <= '\u9fff' for c in text)
-        if has_chinese:
-            words = jieba.lcut(text)
-        else:
-            words = text.lower().split()
-        return [w for w in words if w.strip()]
+def _step_clean(self, text):
+    all_punctuations = string.punctuation + punctuation
+    cleaned = text
+    for p in all_punctuations:
+        cleaned = cleaned.replace(p, ' ')
+    return ' '.join(cleaned.split())
 
-    def _step_count(self, word_list):
-        freq = {}
-        for w in word_list:
-            freq[w] = freq.get(w, 0) + 1
-        return freq
+def _step_tokenize(self, text):
+    has_chinese = any('\u4e00' <= c <= '\u9fff' for c in text)
+    if has_chinese:
+         words = jieba.lcut(text)
+    else:
+         words = text.lower().split()
+    return [w for w in words if w.strip()]
 
-    def _step_format(self, freq_dict):
-        lines = ["流水线处理结果："]
-        lines.append("单词\t\t频次")
-        lines.append("-" * 20)
-        for word, count in freq_dict.items():
-            lines.append(f"{word}\t\t{count}")
-        lines.append("-" * 20)
-        lines.append(f"总单词数：{sum(freq_dict.values())}")
-        lines.append(f"不同单词数：{len(freq_dict)}")
-        return "\n".join(lines)
+def _step_count(self, word_list):
+    freq = {}
+    for w in word_list:
+        freq[w] = freq.get(w, 0) + 1
+    return freq
+
+def _step_format(self, freq_dict):
+    lines = ["流水线处理结果：","单词\t频次","-"*20]
+    for word, count in freq_dict.items():
+        lines.append(f"{word}\t{count}")
+    lines.append("-" * 20)
+    lines.append(f"总单词数：{sum(freq_dict.values())}")
+    lines.append(f"不同单词数：{len(freq_dict)}")
+    return "\n".join(lines)
 
 
 
 kkk: 04-28 10:27:17
 # ---------- 5. 异步保存结果（线程）----------
-    def save_async(self, content, filename="result.txt"):
-        """启动后台线程保存结果到文件"""
-        def _save():
-            try:
-                with open(filename, 'w', encoding='utf-8') as f:
-                    f.write(content)
-                print(f"[异步保存] 结果已保存至 {filename}")
-            except Exception as e:
-                print(f"[异步保存] 保存失败：{e}")
+def save_async(self, content, filename="result.txt"):
+     """启动后台线程保存结果到文件"""
+    def _save():
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(content)
+             print(f"[异步保存] 结果已保存至 {filename}")
+        except Exception as e:
+            print(f"[异步保存] 保存失败：{e}")
         
-        thread = threading.Thread(target=_save, daemon=True)
-        thread.start()
-        return f"异步保存任务已启动，文件将保存为 {filename}"
+    thread = threading.Thread(target=_save, daemon=True)
+    thread.start()
+    return f"异步保存任务已启动，文件将保存为 {filename}"
 
 # ---------- 交互菜单 ----------
 def main():
