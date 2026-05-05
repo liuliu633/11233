@@ -360,6 +360,135 @@ def save_async(self, content, filename="result.txt"):
     return f"异步保存任务已启动，文件将保存为 {filename}"
 
 # ---------- 交互菜单 ----------
+class TextProcessingSystem:
+    def __init__(self):
+        self.text = ""
+        self.history_stack = []
+        self.redo_stack = []
+        self.processed_result = None
+        self.unique_words = []
+        self.word_counts = []
+
+    def update_text(self, new_text):
+        if self.text != new_text:
+            self.history_stack.append(self.text)
+            self.text = new_text
+            self.redo_stack.clear()
+
+    def undo(self):
+        if not self.history_stack:
+            return False, "无撤销操作"
+        self.redo_stack.append(self.text)
+        self.text = self.history_stack.pop()
+        return True, f"撤销成功：{self.text[:40]}..."
+
+    def redo(self): 
+        if not self.redo_stack:
+            return False, "无重做操作"
+        self.history_stack.append(self.text)
+        self.text = self.redo_stack.pop()
+        return True, f"重做成功：{self.text[:40]}..."
+
+    def validate_tags(self, text): 
+        stack = []
+        i = 0
+        while i < len(text):
+            if text[i] == '<':
+                j = i
+                while j < len(text) and text[j] != '>':
+                    j += 1
+                tag = text[i:j + 1]
+                i = j + 1
+                if tag.startswith('</'):
+                    name = tag[2:-1].strip()
+                    if not stack: return False, "多余闭合标签"
+                    if stack.pop() != name: return False, "标签不匹配"
+                else:
+                    name = tag[1:-1].strip()
+                    if name and not name.startswith('!'):
+                        stack.append(name)
+            else:
+                i += 1
+       return (True, "标签正确") if not stack else (False, f"未闭合标签：{stack}")    
+
+   def basic_word_freq(self, text): 
+       words = text.split()
+       total = len(words)
+       unique = len(set(words))
+       return f"总单词：{total}，不同单词：{unique}", None
+
+   def process_line_by_line(self, text):
+       from collections import deque
+       lines = text.splitlines()
+       q = deque(lines)
+       res = []
+       n = 1
+       while q:
+           line = q.popleft()
+           res.append(f"第{n}行：{self.basic_word_freq(line)[0]}")
+           n += 1
+       return "\n".join(res)
+
+  def process_sentence_by_sentence(self, text):
+      from collections import deque
+      sentences = []
+      temp = ""
+      for c in text:
+          temp += c
+          if c in ".?!。？！":
+              sentences.append(temp.strip())
+              temp = ""
+       if temp: sentences.append(temp.strip())
+       q = deque(sentences)
+       res = []
+       n = 1
+       while q:
+           s = q.popleft()
+           res.append(f"第{n}句：{self.basic_word_freq(s)[0]}")
+           n += 1
+       return "\n".join(res)  
+
+    def pipeline_process(self, text):
+        from collections import deque
+        import jieba, string
+        from zhon.hanzi import punctuation
+
+        def clean(t):
+            for p in string.punctuation + punctuation:
+                t = t.replace(p, ' ')
+            return ' '.join(t.split())    
+
+        def cut(t):
+            if any('\u4e00' <= c <= '\u9fff' for c in t):
+                return [w for w in jieba.lcut(t) if w.strip()]
+            return [w.lower() for w in t.split() if w.strip()]
+
+        def count(wl):
+            d = {}
+            for w in wl: d[w] = d.get(w, 0) + 1
+            return d   
+
+        def fmt(fd):
+            lines = ["单词\t频次", "-" * 20]
+            for w, c in fd.items(): lines.append(f"{w}\t{c}")
+            lines.append(f"总计：{sum(fd.values())}，不同：{len(fd)}")
+            return "\n".join(lines)
+
+        data = clean(text)
+        data = cut(data)
+        data = count(data)
+        return fmt(data)
+
+   def save_async(self, content, fn="result.txt"):
+       import threading
+       def run():
+           with open(fn, 'w', encoding='utf-8') as f:
+               f.write(content)
+
+       threading.Thread(target=run, daemon=True).start()
+       return "已启动异步保存"
+        
+            
 def main():
     system = TextProcessingSystem()
     
