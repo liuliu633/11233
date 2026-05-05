@@ -589,3 +589,74 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ---------- 语法检测 ----------
+import language_tool_python
+
+class TextSystem:
+    def __init__(self):
+        self.text = ""
+        self.processed_result = None
+        self.grammar_tool = language_tool_python.LanguageTool('zh-CN')
+
+    def grammar_check(self, text):
+        """语法检查与纠错"""
+        matches = self.grammar_tool.check(text)
+        if not matches:
+            return "✅ 未检测到语法错误，文本语法规范。"
+        
+        # 生成错误报告
+        result = []
+        result.append("⚠️ 检测到以下语法问题：")
+        for idx, match in enumerate(matches, 1):
+            error_msg = f"{idx}. 错误位置：{match.offset}-{match.offset+match.length}"
+            error_msg += f"\n   错误描述：{match.message}"
+            if match.replacements:
+                error_msg += f"\n   建议修改：{', '.join(match.replacements[:3])}"
+            result.append(error_msg)
+        
+        # 生成纠错后的文本
+        corrected_text = language_tool_python.utils.correct(text, matches)
+        result.append(f"\n--- 纠错后文本 ---\n{corrected_text}")
+        
+        return "\n".join(result)
+
+# ---------- 句法分析(spaCy)模块 ----------
+import spacy
+
+class TextSystem:
+    def __init__(self):
+        self.text = ""
+        self.processed_result = None
+        self.nlp = spacy.load("zh_core_web_sm")
+
+    def syntax_analysis(self, text):
+        """句法分析：词性标注+依存关系+句子成分提取"""
+        doc = self.nlp(text)
+        result = []
+        result.append("📊 句法分析结果")
+        result.append("=" * 30)
+        result.append("单词\t词性\t依存关系\t中心词")
+        result.append("-" * 30)
+        
+        # 词性标注和依存关系分析
+        for token in doc:
+            result.append(f"{token.text}\t{token.pos_}\t{token.dep_}\t{token.head.text}")
+        
+        # 提取主谓宾成分
+        result.append("\n--- 句子成分提取 ---")
+        subject = [tok.text for tok in doc if tok.dep_ == "nsubj"]
+        verb = [tok.text for tok in doc if tok.dep_ == "ROOT"]
+        obj = [tok.text for tok in doc if tok.dep_ == "dobj"]
+        
+        result.append(f"主语：{subject if subject else '未识别到主语'}")
+        result.append(f"谓语：{verb if verb else '未识别到谓语'}")
+        result.append(f"宾语：{obj if obj else '未识别到宾语'}")
+        
+        return "\n".join(result)
+
+    def pipeline_process(self, text):
+        """将句法分析整合到处理流程"""
+        syntax_result = self.syntax_analysis(text)
+        final_result = f"=== 原文本 ===\n{text}\n\n=== 句法分析结果 ===\n{syntax_result}"
+        return final_result 
