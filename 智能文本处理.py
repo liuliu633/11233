@@ -598,6 +598,7 @@ class TextSystem:
         self.text = ""
         self.processed_result = None
         self.grammar_tool = language_tool_python.LanguageTool('zh-CN')
+        self.nlp = None
 
     def grammar_check(self, text):
         """语法检查与纠错"""
@@ -623,15 +624,14 @@ class TextSystem:
 
 # ---------- 句法分析(spaCy)模块 ----------
 import spacy
-
-class TextSystem:
-    def __init__(self):
-        self.text = ""
-        self.processed_result = None
-        self.nlp = spacy.load("zh_core_web_sm")
-
     def syntax_analysis(self, text):
         """句法分析：词性标注+依存关系+句子成分提取"""
+        try:
+            if self.nlp is None:
+               self.nlp = spacy.load("zh-core-web-sm") 
+        except:
+            return"❌ 未安装中文模型，请先运行：python -m spacy download zh-core-web-sm"
+            
         doc = self.nlp(text)
         result = []
         result.append("📊 句法分析结果")
@@ -660,3 +660,15 @@ class TextSystem:
         syntax_result = self.syntax_analysis(text)
         final_result = f"=== 原文本 ===\n{text}\n\n=== 句法分析结果 ===\n{syntax_result}"
         return final_result 
+
+# 测试语法与句法功能
+if __name__ == "__main__":
+    ts = TextSystem()
+    text = input("请输入测试语句：")
+    print("\n==== 语法检测 ====")
+    print(ts.grammar_check(text))
+    print("\n==== 句法分析 ====")
+    print(ts.syntax_analysis(text))
+#该版本的库对中文支持不如英文完整，主要能识别错别字、标点错误和简单的搭配问题，复杂的语法问题识别能力有限，
+#将会在下个版本做改进
+#注：language_tool_python是调用Java版的LanguageTool来做语法检查
