@@ -6,6 +6,7 @@ import re
 import json
 import threading
 
+saved_texts = []
 SAVE_PATH = "word_data.json"
 
 #自动保存
@@ -18,18 +19,18 @@ def load_counts():
         return [],[]
 
 #自动保存
-def save_counts(uw,wc):
+def save_counts(words,counts):
+    data = {"words": words,"counts": counts}
     with open("word_data.json","w",encording="utf-8") as f:
-        json.dump({"unique_words":uw,"word_counts":wc},f,ensure_ascii=False)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 #删除指定单词
-def delete_word(uw,wc,word):
-    target =word.strip().lower()
-    for i in range(len(uw)):
-        if uw[i].strip().lower() == target:
-            uw.pop(i)
-            wc.pop(i)
-            return True
+def delete_word(words. counts, word):
+    if word in words:
+        idx = words.index(word)
+        words.pop(idx)
+        counts.pop(idx)
+        return True
     return False
 #清空所有历史记录
 def clear_all(uw,wc):
