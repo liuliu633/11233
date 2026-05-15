@@ -37,6 +37,47 @@ def clear_all(uw,wc):
     uw.clear()
     wc.clear()
     
+   # 3. 检测双动词结构（主语+动词+动词，中间无连接词）
+                verb_suffixes = ("e", "s", "es", "ing", "ed")
+                verb_positions = []
+                for idx, word in enumerate(words):
+                    if any(word.lower().endswith(suffix) for suffix in verb_suffixes):
+                        verb_positions.append(idx)
+                # 如果有两个动词，且位置相邻，且不是情态动词+动词结构
+                if len(verb_positions) >= 2 and verb_positions[1] == verb_positions[0] + 1:
+                    errors.append("语法警告：英文句子中出现多个连续动词，可能存在语序错误")
+
+    if not errors:
+        return "✅ 文本语法格式规范，未检测到错误"
+
+    res = ["\n=== 语法检测结果 ==="]
+    for idx, err in enumerate(errors, 1):
+        res.append(f"{idx}. {err}")
+    return "\n".join(res)
+
+#加载历史记录
+unique_words,word_counts = load_counts()
+
+#选择操作
+while True:
+    print("请选择操作：")
+    print("1➡输入文本并累计词频")
+    print("2➡删除某个单词")
+    print("3➡清空所有数据")
+    print("4➡语法检测")
+    print("0➡退出程序")
+    choice = input("请输入序号：").strip()
+
+    if choice == "1":
+        raw_input_text = input("请输入要统计的文本：").strip()
+        if not raw_input_text:
+            print("错误：你还没输入任何文本！")
+        else:
+            #把输入的文本保存进全局变量
+            saved_texts.append(raw_input_text)
+
+            #词频统计处理
+            text = raw_input_text
 #加载历史记录
 unique_words,word_counts = load_counts()
 
@@ -673,3 +714,4 @@ if __name__ == "__main__":
 #该版本的库对中文支持不如英文完整，主要能识别错别字、标点错误和简单的搭配问题，复杂的语法问题识别能力有限，
 #将会在下个版本做改进
 #注：language_tool_python是调用Java版的LanguageTool来做语法检查
+
