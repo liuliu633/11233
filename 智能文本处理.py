@@ -37,6 +37,21 @@ def clear_all(uw,wc):
     uw.clear()
     wc.clear()
     
+    words = corrected.strip().split()
+if len(words) >= 3:
+    # 1. 识别主语（人称代词开头）
+    subject_pronouns = {"i", "you", "he", "she", "we", "they", "it"}
+    starts_with_pronoun = words[0].lower() in subject_pronouns
+if starts_with_pronoun:
+    # 2. 检测否定词/助动词的位置
+    neg_words = {"don't", "doesn't", "can't", "won't", "isn't", "aren't"}
+for idx, word in enumerate(words):
+    if word.lower() in neg_words:
+        # 否定词不在第1或第2位，就是错误
+        if idx not in (1, 2):
+            errors.append("语法警告：英文语序可能存在问题，助动词/否定词位置不当")
+            break
+    
    # 3. 检测双动词结构（主语+动词+动词，中间无连接词）
                 verb_suffixes = ("e", "s", "es", "ing", "ed")
                 verb_positions = []
@@ -78,6 +93,13 @@ while True:
 
             #词频统计处理
             text = raw_input_text
+            #版本三新增语法功能
+    elif choice == "4":
+        if not saved_texts[0]:
+            print("⚠️ 还没有输入过文本，请先选1输入文本！")
+        else:
+            print("\n====语法检测结果====")
+            print(grammar_check(saved_texts[-1]))
 #加载历史记录
 unique_words,word_counts = load_counts()
 
@@ -529,8 +551,8 @@ class TextProcessingSystem:
 
        threading.Thread(target=run, daemon=True).start()
        return "已启动异步保存"
-        
-            
+
+       
 def main():
     system = TextProcessingSystem()
     
