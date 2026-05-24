@@ -36,6 +36,78 @@ def delete_word(words. counts, word):
 def clear_all(uw,wc):
     uw.clear()
     wc.clear()
+
+def grammar_check(text):
+    raw_text = text.strip()
+    if not raw_text:
+        return "⚠️ 文本为空"
+
+    errors = []
+    corrected = raw_text
+
+    # 语义重复检测（可扩展）
+    repeat_groups = [
+        ["大约", "差不多", "左右", "大概", "估计"],
+        ["必须", "务必", "一定要"],
+        ["全部", "所有", "都", "完全"],
+        ["非常", "很", "特别", "十分"],
+        ["经常", "常常", "时常"]
+    ]
+
+    for group in repeat_groups:
+        found = [w for w in group if w in corrected]
+        if len(found) >= 2:
+            errors.append(f"语义重复：{', '.join(found)} 意思重复")
+            # 删除found[1:]里的词，found[0]不动
+            for w in found[1:]:
+                corrected = corrected.replace(w, "")
+
+
+    has_chinese = any('\u4e00' <= c <='\u9fff' for c in raw_text)
+    has_english = any(c.isalpha() for c in raw_text)
+
+    # 连续字符重复检测
+    repeat_pattern = re.compile(r'([\u4e00-\u9fff-zA-Z])\1{2,}')
+    repeats = repeat_pattern.findall(corrected)
+    for ch in set(repeats):
+        errors.append(f"冗余重复：字符「{ch}」连续重复过多")
+        corrected = re.sub(f"{ch}+", ch, corrected)
+
+    # 中文语法规则
+    if has_chinese:
+        # 标点不规范检测
+        half_punct = r'[,.!?;:\'"()\[\]]'
+        if re.search(half_punct, corrected):
+            errors.append("标点不规范：请使用中文标点")
+
+        # 句尾标点检测
+        if not re.search(r'[。？！；]$', corrected):
+            errors.append("句式不完整，中文句子缺少结尾标点")
+            corrected += "。"
+
+        # 词语重复检测（如“开心开心”）
+        word_repeat = re.compile(r'([\u4e00-\u9fff-zA-Z]{2})\s*\1')
+        dup_words = word_repeat.findall(corrected)
+        for w in set(dup_words):
+            errors.append(f"语义重复：「{w}{w}」重复冗余")
+            corrected = re.sub(f"{w}\\s*{w}", w, corrected)
+        # 新增：通用中文语序语病提示
+        if len(corrected) >= 6:
+            errors.append("语法提示：语句语序或搭配可能存在问题，请检查通顺度")
+
+    # 英文语法规则
+    if has_english and not has_chinese:
+        if corrected and corrected[0].islower():
+            errors.append("格式规范：英文句子首字母应大写")
+            corrected = corrected[0].upper() + corrected[1:]
+
+        if not re.search(r'[.!?]$', corrected):
+            errors.append("句式不完整：英文句子缺少结尾标点")
+            corrected += "."
+
+        if re.search(r'\s{2,}', corrected):
+            errors.append("格式规范：存在连续多余空格")
+            corrected = re.sub(r'\s+', ' ', corrected)
     
     words = corrected.strip().split()
 if len(words) >= 3:
