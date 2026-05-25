@@ -45,6 +45,60 @@ def grammar_check(text):
     errors = []
     corrected = raw_text
 
+    #BF暴力算法
+    def bf_find_repeat(s,pattern_len=2):
+        #BF:检测文本中连续重复的短语（长度为pattern_len）
+        repeats = []
+        n = len(s)
+        for i in range(n - 2*pattern_len + 1):
+            #暴力匹配：直接比较两段子串是否相同
+            if s[i:i+pattern_len] == s[i+pattern_len:i+2*pattern_len]:
+                repeats.append(s[i:i+pattern_len])
+            return repeats
+
+    #检测连续重复的2个词
+    dup_phrass = bf_find_repeat(corrected, pattern_len=2)
+    for w in set(dup_phrass):
+        errors.append(f"语义重复：「{w}{w}」重复冗余（BF匹配检测）")
+        corrected = corrected.replace(f"{w}{w}", w)
+
+    #KMP算法next数组
+    def compute_next(pattern):
+        #KMP算法：计算模式串的next数组
+        m = len(pattern)
+        next_arr = [0] * m
+        j = 0
+        for i in range(1, m):
+            while j > 0 and pattern[i] != pattern[j]:
+                j = next_arr[j-1]
+            if pattern[i] == pattern[j]:
+                j += 1
+                next_arr[i] = j
+            else:
+                next_arr[i] = 0
+        return next_arr
+
+    def kmp_search(text, pattern):
+        #KMP串匹配算法：利用next数组避免主串回溯
+        if not pattern:
+            return[]
+        n = len(text)
+        m = len(pattern)
+        if m > n:
+            return []
+        next_arr = compute_next(pattern)
+        j = 0
+        matches = []
+        for i in range(n):
+            while j > 0 and text[i] != pattern[j]:
+                j = next_arr[j-1]
+            if text[i] == pattern[j]:
+                j += 1
+            if j == m:
+                matches.append(i - m + 1)
+                j = next_arr[j-1]
+        return matches       
+    
     # 语义重复检测（可扩展）
     repeat_groups = [
         ["大约", "差不多", "左右", "大概", "估计"],
@@ -55,7 +109,11 @@ def grammar_check(text):
     ]
 
     for group in repeat_groups:
-        found = [w for w in group if w in corrected]
+        found = []
+        for w in group:
+            #用KMP算法在文本中快捷查找词
+            if kmp_search(corrected, w):
+                found,append(w)
         if len(found) >= 2:
             errors.append(f"语义重复：{', '.join(found)} 意思重复")
             # 删除found[1:]里的词，found[0]不动
@@ -109,22 +167,32 @@ def grammar_check(text):
             errors.append("格式规范：存在连续多余空格")
             corrected = re.sub(r'\s+', ' ', corrected)
     
-    words = corrected.strip().split()
-if len(words) >= 3:
-    # 1. 识别主语（人称代词开头）
-    subject_pronouns = {"i", "you", "he", "she", "we", "they", "it"}
-    starts_with_pronoun = words[0].lower() in subject_pronouns
-if starts_with_pronoun:
-    # 2. 检测否定词/助动词的位置
-    neg_words = {"don't", "doesn't", "can't", "won't", "isn't", "aren't"}
-for idx, word in enumerate(words):
-    if word.lower() in neg_words:
-        # 否定词不在第1或第2位，就是错误
-        if idx not in (1, 2):
-            errors.append("语法警告：英文语序可能存在问题，助动词/否定词位置不当")
-            break
+        words = corrected.strip().split()
+        if len(words) >= 3:
+            if words[0] in {"i", "you", "he", "she", "we", "they", "it"}:
+                has_neg = any(w in {"don't", "doesn't", "can't", "won't", "isn't", "aren't"} for w in words)
+                has_verb = any(w.endswith(("e", "s", "es", "ing", "ed")) for w in words)
+                if has_neg and has_verb and words.index("don't" if "don't" in words else "doesn't" if "doesn't" in words else "can't" if "can't" in words else "won't" if "won't" in words else "isn't" if "isn't" in words else "aren't") > 1:
+                    errors.append("语法警告：英文语序可能不符合主谓宾结构，请检查助动词/否定词的位置")
+                elif len(words) >= 4 and has_verb and not has_neg:
+                    errors.append("语法提示：句子结构较复杂，请检查主谓宾顺序是否合理")
+
+        words = corrected.strip().split()
+        if len(words) >= 3:
+            # 1. 识别主语（人称代词开头）
+            subject_pronouns = {"i", "you", "he", "she", "we", "they", "it"}
+            starts_with_pronoun = words[0].lower() in subject_pronouns
+            if starts_with_pronoun:
+                # 2. 检测否定词/助动词的位置
+                neg_words = {"don't", "doesn't", "can't", "won't", "isn't", "aren't"}
+                for idx, word in enumerate(words):
+                    if word.lower() in neg_words:
+                        # 否定词不在第1或第2位，就是错误
+                        if idx not in (1, 2):
+                            errors.append("语法警告：英文语序可能存在问题，助动词/否定词位置不当")
+                            break
     
-   # 3. 检测双动词结构（主语+动词+动词，中间无连接词）
+                # 3. 检测双动词结构（主语+动词+动词，中间无连接词）
                 verb_suffixes = ("e", "s", "es", "ing", "ed")
                 verb_positions = []
                 for idx, word in enumerate(words):
@@ -142,36 +210,6 @@ for idx, word in enumerate(words):
         res.append(f"{idx}. {err}")
     return "\n".join(res)
 
-#加载历史记录
-unique_words,word_counts = load_counts()
-
-#选择操作
-while True:
-    print("请选择操作：")
-    print("1➡输入文本并累计词频")
-    print("2➡删除某个单词")
-    print("3➡清空所有数据")
-    print("4➡语法检测")
-    print("0➡退出程序")
-    choice = input("请输入序号：").strip()
-
-    if choice == "1":
-        raw_input_text = input("请输入要统计的文本：").strip()
-        if not raw_input_text:
-            print("错误：你还没输入任何文本！")
-        else:
-            #把输入的文本保存进全局变量
-            saved_texts.append(raw_input_text)
-
-            #词频统计处理
-            text = raw_input_text
-            #版本三新增语法功能
-    elif choice == "4":
-        if not saved_texts[0]:
-            print("⚠️ 还没有输入过文本，请先选1输入文本！")
-        else:
-            print("\n====语法检测结果====")
-            print(grammar_check(saved_texts[-1]))
 #加载历史记录
 unique_words,word_counts = load_counts()
 
