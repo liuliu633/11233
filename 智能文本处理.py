@@ -222,11 +222,15 @@ while True:
     choice = input("请输入序号：").strip()
 
     if choice =="1":
-        text = input("请输入要统计的文本！").strip()
-        
-        if not text:
+        raw_input_text = input("请输入要统计的文本；").strip()
+        if not raw_input_text:
             print("错误：你还没输入任何文本！")
         else:
+            #把输入的文本保存进全局变量
+            saved_texts.append(raw_input_text)
+
+            #词频统计处理
+            text = raw_input_text
             all_punctuations = string.punctuation + punctuation
             for p in all_punctuations:
                 text = text.replace(p, ' ')
@@ -271,6 +275,14 @@ while True:
         else:
             print("已取消清空")
 
+    #版本三新增语法功能
+    elif choice == "4":
+        if not saved_texts:
+            print("⚠️还没有输入过文本，请先选1输入文本！")
+        else:
+            print("\n====语法检测结果====")
+            print(grammar_check(saved_texts[-1]))
+        
     elif choice == "0":
         print("退出程序")
         break
@@ -764,86 +776,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# ---------- 语法检测 ----------
-import language_tool_python
-
-class TextSystem:
-    def __init__(self):
-        self.text = ""
-        self.processed_result = None
-        self.grammar_tool = language_tool_python.LanguageTool('zh-CN')
-        self.nlp = None
-
-    def grammar_check(self, text):
-        """语法检查与纠错"""
-        matches = self.grammar_tool.check(text)
-        if not matches:
-            return "✅ 未检测到语法错误，文本语法规范。"
-        
-        # 生成错误报告
-        result = []
-        result.append("⚠️ 检测到以下语法问题：")
-        for idx, match in enumerate(matches, 1):
-            error_msg = f"{idx}. 错误位置：{match.offset}-{match.offset+match.length}"
-            error_msg += f"\n   错误描述：{match.message}"
-            if match.replacements:
-                error_msg += f"\n   建议修改：{', '.join(match.replacements[:3])}"
-            result.append(error_msg)
-        
-        # 生成纠错后的文本
-        corrected_text = language_tool_python.utils.correct(text, matches)
-        result.append(f"\n--- 纠错后文本 ---\n{corrected_text}")
-        
-        return "\n".join(result)
-
-# ---------- 句法分析(spaCy)模块 ----------
-import spacy
-    def syntax_analysis(self, text):
-        """句法分析：词性标注+依存关系+句子成分提取"""
-        try:
-            if self.nlp is None:
-               self.nlp = spacy.load("zh-core-web-sm") 
-        except:
-            return"❌ 未安装中文模型，请先运行：python -m spacy download zh-core-web-sm"
-            
-        doc = self.nlp(text)
-        result = []
-        result.append("📊 句法分析结果")
-        result.append("=" * 30)
-        result.append("单词\t词性\t依存关系\t中心词")
-        result.append("-" * 30)
-        
-        # 词性标注和依存关系分析
-        for token in doc:
-            result.append(f"{token.text}\t{token.pos_}\t{token.dep_}\t{token.head.text}")
-        
-        # 提取主谓宾成分
-        result.append("\n--- 句子成分提取 ---")
-        subject = [tok.text for tok in doc if tok.dep_ == "nsubj"]
-        verb = [tok.text for tok in doc if tok.dep_ == "ROOT"]
-        obj = [tok.text for tok in doc if tok.dep_ == "dobj"]
-        
-        result.append(f"主语：{subject if subject else '未识别到主语'}")
-        result.append(f"谓语：{verb if verb else '未识别到谓语'}")
-        result.append(f"宾语：{obj if obj else '未识别到宾语'}")
-        
-        return "\n".join(result)
-
-    def pipeline_process(self, text):
-        """将句法分析整合到处理流程"""
-        syntax_result = self.syntax_analysis(text)
-        final_result = f"=== 原文本 ===\n{text}\n\n=== 句法分析结果 ===\n{syntax_result}"
-        return final_result 
-
-# 测试语法与句法功能
-if __name__ == "__main__":
-    ts = TextSystem()
-    text = input("请输入测试语句：")
-    print("\n==== 语法检测 ====")
-    print(ts.grammar_check(text))
-    print("\n==== 句法分析 ====")
-    print(ts.syntax_analysis(text))
-#该版本的库对中文支持不如英文完整，主要能识别错别字、标点错误和简单的搭配问题，复杂的语法问题识别能力有限，
-#将会在下个版本做改进
-#注：language_tool_python是调用Java版的LanguageTool来做语法检查
-
+#经过几次修改，第三个版本的语法检测不依赖外来库，但是只能做简单的语法检测，复杂语病可能检查不出来（已尽力，不调用库做不到）；其次，该系统对语病的分析只能做提醒，实现不了帮助用户直接修改句子（尽力了）
+#还有就是，修改语病功能只能修改最近一次选择1进行输入的文本，做不了历史选择句子，在后续版本中如果可能尽量实现
