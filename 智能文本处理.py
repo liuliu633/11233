@@ -9,6 +9,7 @@ import threading
 saved_texts = []
 SAVE_PATH = "word_data.json"
 
+#版本四新增：二叉树节点（搜索树）
 class TreeNode:
     def __init__(self,word,count):
         self.word = word
@@ -42,6 +43,7 @@ class BinarySearchTree:
                 break
                 
     def search(self,word):
+        """二叉树查找，返回"""
         cur = self.root
         while cur:
             if word == cur.word:
@@ -263,6 +265,8 @@ def grammar_check(text):
 
 #加载历史记录
 unique_words,word_counts = load_counts()
+#版本四新增：初始化二叉树
+word_bst.rebuild_tree(unique_words, word_counts)
 
 while True:
     print("请选择操作：")
@@ -307,6 +311,8 @@ while True:
 
     #自动保存
        save_counts(unique_words,word_counts)
+       #版本四新增：更新二叉树
+       word_bst.rebuild_tree(unique_words, word_counts)
        print("词频已累计并保存")
 
     elif choice == "2":
@@ -314,6 +320,9 @@ while True:
         if delete_word(unique_words,word_counts,del_word):
             print(f"已删除单词：{del_word}")
             save_counts(unique_words,word_counts)
+            #版本四新增：删除后重建二叉树
+            word_bst.rebuild_tree(unique_words, word_counts)
+            print("二叉树已更新")
         else:
             print("单词不存在！")
 
@@ -322,6 +331,8 @@ while True:
         if confirm.lower() == "y":
             clear_all(unique_words,word_counts)
             save_counts(unique_words,word_counts)
+            #版本四新增：清空二叉树
+            word_bst.root = None
             print("已清空所有数据！")
         else:
             print("已取消清空")
@@ -333,7 +344,16 @@ while True:
         else:
             print("\n====语法检测结果====")
             print(grammar_check(saved_texts[-1]))
-        
+
+    #版本四新增二叉树查找入口
+    elif choice == "5":
+        search_word = input("请输入要查找的单词：").strip()
+        exist, cnt = word_bst.search(search_word)
+        if exist:
+            print(f"【二叉树查找结果】单词「{search_word}」存在，出现频次：{cnt}")
+        else:
+            print(f"【二叉树查找结果】单词「{search_word}」不存在")
+            
     elif choice == "0":
         print("退出程序")
         break
