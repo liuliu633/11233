@@ -9,6 +9,21 @@ import threading
 saved_texts = []
 SAVE_PATH = "word_data.json"
 
+class TreeNode:
+    def __init__(self,word,count):
+        self.word = word
+        self.count = count
+        self.left = None
+        self.right = None
+
+class BinarySearchTree:
+    def __init__(self):
+        self.root = None
+
+    def insert(self,word,count):
+        new_node = TreeNode(word,count)
+        if not self.root:
+            self.root = new_node
 #自动保存
 def load_counts():
     try:
