@@ -24,6 +24,22 @@ class BinarySearchTree:
         new_node = TreeNode(word,count)
         if not self.root:
             self.root = new_node
+            return
+        cur = self.root
+        while True:
+            if word < cur.word:
+                if not cur.left:
+                    cur.left = new_node
+                    break
+                cur = cur.left
+            elif word > cur.word:
+                if not cur.right:
+                    cur.right = new_node
+                    break
+                cur = cur.right
+            else:
+                cur.count = count
+                break
 #自动保存
 def load_counts():
     try:
