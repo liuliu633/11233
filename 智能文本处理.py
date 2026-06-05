@@ -40,6 +40,26 @@ class BinarySearchTree:
             else:
                 cur.count = count
                 break
+                
+    def search(self,word):
+        cur = self.root
+        while cur:
+            if word == cur.word:
+                return True, cur.count
+            elif word < cur.word:
+                cur = cur.left
+            else:
+                cur = cur.right
+        return False, 0
+
+    def rebuild_tree(self, word_list, count_list):
+        """根据两个列表重建整棵二叉树"""
+        self.root = None
+        for w, c in zip(word_list, count_list):
+            self.insert(w, c)
+
+word_bst = BinarySearchTree()
+            
 #自动保存
 def load_counts():
     try:
