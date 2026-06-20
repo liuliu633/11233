@@ -290,7 +290,18 @@ def sentence_deduplicate(text):
 
 
 #版本五新增：2.文本比对
-
+def text_compare(text1, text2):
+    set1 = set(jieba.lcut(text1))
+    set2 = set(jieba.lcut(text2))
+    same = set1 & set2
+    diff1 = set1 - set2
+    diff2 = set2 - set1
+    res = []
+    res.append("===== 文本比对结果 =====")
+    res.append(f"共有词汇({len(same)})：{'、'.join(same)}" if same else "共有词汇：无")
+    res.append(f"文本1独有词汇({len(diff1)})：{'、'.join(diff1)}" if diff1 else "文本1独有词汇：无")
+    res.append(f"文本2独有词汇({len(diff2)})：{'、'.join(diff2)}" if diff2 else "文本2独有词汇：无")
+    return "\n".join(res)
 
 
 
