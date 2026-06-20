@@ -467,7 +467,29 @@ while True:
             else:
                 print("无效选择")
 
+    elif choice == "7":
+        print("请输入第一段文本：")
+        t1 = input().strip()
+        print("请输入第二段文本：")
+        t2 = input().strip()
+        if not t1 or not t2:
+            print("文本不能为空！")
+        else:
+            print(text_compare(t1, t2))
 
+    elif choice == "8":
+        if not saved_texts:
+            print("暂无历史文本，请先输入文本！")
+        else:
+            analyze_txt = saved_texts[-1]
+            print(structure_analysis(analyze_txt))
+
+    elif choice == "0":
+        print("退出程序")
+        break
+
+    else:
+        print("输入无效，请重新选择！")
 
 
     elif choice == "0":
