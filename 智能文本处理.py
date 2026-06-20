@@ -446,7 +446,26 @@ while True:
             print(f"【二叉树查找结果】单词「{search_word}」不存在")
 
     #版本五新增功能实现（选择6、7、8）
-
+    elif choice == "6":
+        if not saved_texts:
+            print("暂无历史文本，请先输入文本！")
+        else:
+            print("1. 多条历史文本整体去重")
+            print("2. 当前最新文本内部句子去重")
+            sub_cho = input("请选择子功能：").strip()
+            if sub_cho == "1":
+                new_list = text_deduplicate(saved_texts)
+                print(f"去重前文本总数：{len(saved_texts)}，去重后：{len(new_list)}")
+                print("去重后的文本列表：")
+                for idx, t in enumerate(new_list, 1):
+                    print(f"{idx}. {t}")
+            elif sub_cho == "2":
+                last_txt = saved_texts[-1]
+                res_txt = sentence_deduplicate(last_txt)
+                print("句子去重后文本：")
+                print(res_txt)
+            else:
+                print("无效选择")
 
 
 
