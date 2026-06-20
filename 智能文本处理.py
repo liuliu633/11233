@@ -263,6 +263,63 @@ def grammar_check(text):
         res.append(f"{idx}. {err}")
     return "\n".join(res)
 
+#版本五新增：1.文本去重
+
+
+
+
+
+
+
+#版本五新增：2.文本比对
+
+
+
+
+
+
+#版本五新增：3.篇章结构分析
+def structure_analysis(text):
+    if not text.strip():
+        return "⚠️ 文本为空，无法分析"
+    res = []
+    # 1. 基础统计
+    total_char = len(text.replace("\n","").replace(" ",""))
+    paragraphs = [p for p in text.splitlines() if p.strip()]
+    para_num = len(paragraphs)
+
+    # 分句
+    sentences = []
+    temp = ""
+    for c in text:
+        temp += c
+        if c in ".?!。？！":
+            s = temp.strip()
+            if s:
+                sentences.append(s)
+            temp = ""
+    if temp.strip():
+        sentences.append(temp.strip())
+    sen_num = len(sentences)
+    # 句长统计
+    sen_len_list = [len(s) for s in sentences]
+    avg_len = sum(sen_len_list) / len(sen_len_list) if sen_len_list else 0
+
+    res.append("===== 篇章结构分析 =====")
+    res.append(f"纯字符总数：{total_char}")
+    res.append(f"段落数量：{para_num}")
+    res.append(f"句子数量：{sen_num}")
+    res.append(f"单句平均长度：{avg_len:.2f} 字符")
+    if paragraphs:
+        res.append(f"首段内容：{paragraphs[0][:30]}...")
+        res.append(f"尾段内容：{paragraphs[-1][:30]}...")
+    if sentences:
+        res.append(f"首句内容：{sentences[0]}")
+        res.append(f"尾句内容：{sentences[-1]}")
+    return "\n".join(res)
+
+
+
 #加载历史记录
 unique_words,word_counts = load_counts()
 #版本四新增：初始化二叉树
@@ -273,6 +330,11 @@ while True:
     print("1-输入文本并累计词频")
     print("2-删除某个单词")
     print("3-清空所有数据")
+    print("4➡语法检测")
+    print("5➡查找词")
+    print("6️➡文本去重（全文或句子去重）")
+    print("7➡两段文字比对")
+    print("8➡篇章结构分析")
     print("0-退出程序")
     choice = input("请输入序号：").strip()
 
@@ -353,7 +415,13 @@ while True:
             print(f"【二叉树查找结果】单词「{search_word}」存在，出现频次：{cnt}")
         else:
             print(f"【二叉树查找结果】单词「{search_word}」不存在")
-            
+
+    #版本五新增功能实现（选择6、7、8）
+
+
+
+
+
     elif choice == "0":
         print("退出程序")
         break
