@@ -264,7 +264,25 @@ def grammar_check(text):
     return "\n".join(res)
 
 #版本五新增：1.文本去重
-
+def text_deduplicate(text_list):
+    unique_texts = []
+    for txt in text_list:
+        if txt not in unique_texts:
+            unique_texts.append(txt)
+    return unique_texts
+def sentence_deduplicate(text):
+    sentences = []
+    temp = ""
+    for c in text:
+        temp += c
+        if c in ".?!。？！":
+            sen = temp.strip()
+            if sen and sen not in sentences:
+                sentences.append(sen)
+            temp = ""
+    if temp.strip() and temp.strip() not in sentences:
+        sentences.append(temp.strip())
+    return "".join(sentences)
 
 
 
